@@ -1,15 +1,45 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# jlc-altium: downloads, generated output, personal settings
 .cache/
 config.local.toml
 rotations.csv
 library/*.sqlite
+library/*.sqlite-journal
+library/*.sqlite-wal
+library/*.sqlite-shm
 library/*.sqlite.new
 library/*.DbLib
 library/update.log
 library/Custom/KiCad/
-# Altium history/preview files
+*_JLCPCB_BOM.csv
+*_JLCPCB_CPL.csv
+
+# Altium Designer
 History/
 __Previews/
+Project Logs for */
+Project Outputs for */
 *.SchLibPreview
 *.PcbLibPreview
+*.PrjPcbStructure
+*.LdbLib.bak
+~$*
+.~lock*
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
