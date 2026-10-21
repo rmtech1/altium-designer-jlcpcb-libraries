@@ -86,6 +86,8 @@ daily.
 
 ## 🚀 Quick start
 
+> Needs [Git for Windows](https://git-scm.com/download/win) for `git clone`. No Git? [Download the ZIP](https://github.com/rmtech1/altium-designer-jlcpcb-libraries/archive/refs/heads/main.zip) instead. See [Step 1](#step-1-get-the-code-and-build-the-database).
+
 ```bat
 git clone https://github.com/rmtech1/altium-designer-jlcpcb-libraries
 cd altium-designer-jlcpcb-libraries
@@ -102,13 +104,36 @@ Next, install `library\JLCPCB.DbLib` in Altium. The full walkthrough is below.
 - **Windows** with **Altium Designer** (any version with Database Library support; the 64-bit releases from AD18 onward).
 - **Python 3.11 or newer**: [python.org/downloads](https://www.python.org/downloads/). Tick **"Add python.exe to PATH"** during install.
 - **SQLite3 ODBC Driver, 64-bit**: [ch-werner.de/sqliteodbc](http://www.ch-werner.de/sqliteodbc/) (`sqliteodbc_w64.exe`). Altium is 64-bit, so the 32-bit driver will not work.
+- **Git for Windows** *(recommended)*: [git-scm.com/download/win](https://git-scm.com/download/win). You need it for `git clone`, and later `git pull` gets new versions of the tool. If you'd rather not install Git, download the ZIP instead (see Step 1).
 - *Optional:* `pip install easyeda2kicad`, which the `fetch` command needs.
 
 ### Step 1: Get the code and build the database
 
+Download the project in one of two ways.
+
+**Option A: With Git (recommended).** Install [Git for Windows](https://git-scm.com/download/win), then open *Command Prompt* in the folder where you want the library and run:
+
 ```bat
 git clone https://github.com/rmtech1/altium-designer-jlcpcb-libraries
 cd altium-designer-jlcpcb-libraries
+```
+
+To get new versions of the tool later, run `git pull` in that folder.
+
+**Option B: Without Git, as a ZIP.**
+
+1. Go to the [repository page](https://github.com/rmtech1/altium-designer-jlcpcb-libraries).
+2. Click **Code » Download ZIP**, or use [this direct link](https://github.com/rmtech1/altium-designer-jlcpcb-libraries/archive/refs/heads/main.zip).
+3. Right-click the ZIP, choose **Extract All…**, and pick a permanent location, such as `C:\Altium\altium-designer-jlcpcb-libraries`.
+4. Open *Command Prompt* in the extracted folder, the one containing `README.md`. GitHub names it `altium-designer-jlcpcb-libraries-main`, and you can rename it if you like.
+
+> ⚠️ **Choose a permanent folder.** The scheduled task and the DbLib point at this folder. If you move it later, run `update --write-dblib` and reinstall the scheduled task.
+>
+> To update a ZIP install, download the new ZIP and extract it over the old folder. Your `config.local.toml`, `overrides/parts.csv` and generated `library` files are kept, unless the new ZIP contains a file with the same name, which is overwritten. The only one that ships in the ZIP is `overrides/parts.csv`, so back it up first.
+
+Then build the database:
+
+```bat
 python -m jlc_altium update
 ```
 
