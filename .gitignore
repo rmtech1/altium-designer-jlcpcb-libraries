@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.cache/
+config.local.toml
+rotations.csv
+library/*.sqlite
+library/*.sqlite.new
+library/*.DbLib
+library/update.log
+library/Custom/KiCad/
+# Altium history/preview files
+History/
+__Previews/
+*.SchLibPreview
+*.PcbLibPreview
