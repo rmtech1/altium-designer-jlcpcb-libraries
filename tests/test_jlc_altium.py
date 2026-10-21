@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jlc_altium import build, categorize, dblib, fab, lookup, parts, source
+from jlc_altium import altium_script, build, categorize, dblib, fab, footprints, lookup, parts, source
 from jlc_altium.config import Config, load
 
 PRICE = json.dumps([{"qFrom": 1, "qTo": 99, "price": 0.0012}, {"qFrom": 100, "qTo": None, "price": 0.0008}])
@@ -217,6 +217,33 @@ class FabTest(unittest.TestCase):
         ext = next(p for p in source.read(raw) if p["lcsc"] == "C99999")
         alts = lookup.alternatives(cfg.database_path, ext)
         self.assertEqual([a["LCSC"] for a in alts], ["C25804"])
+
+
+class AltiumScriptTest(unittest.TestCase):
+    def test_render(self):
+        tmp = Path(tempfile.mkdtemp()) / "it's here"
+        cfg = make_config(tmp)
+        text = altium_script.render(cfg)
+        # Paths are Pascal string literals with quotes doubled.
+        self.assertIn("it''s here", text)
+        self.assertIn("AddSymbol(Lib, 'Ferrite Bead', 'FB', 'DrawFerrite');", text)
+        names = footprints.footprint_names(["RES", "CAP", "IND", "FB"])
+        for name in names:
+            self.assertIn(f"AddChip(Lib, '{name}',", text)
+        self.assertEqual(text.count("AddChip(Lib, '"), len(names))
+        self.assertNotIn("%(", text)
+
+    def test_write(self):
+        cfg = make_config(Path(tempfile.mkdtemp()))
+        prj = altium_script.write(cfg)
+        self.assertIn("DocumentPath=JLC_Setup.pas", prj.read_text())
+        self.assertTrue((prj.parent / "JLC_Setup.pas").exists())
+
+    def test_courtyard_covers_pads(self):
+        for size, ((pad_l, pad_w, pitch), _) in footprints.CHIP_LANDS.items():
+            cx, cy = footprints.courtyard(size)
+            self.assertGreater(cx, pitch / 2 + pad_l / 2)
+            self.assertGreater(cy, pad_w / 2)
 
 
 class KicadSymTest(unittest.TestCase):

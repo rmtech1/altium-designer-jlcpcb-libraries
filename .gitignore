@@ -21,6 +21,9 @@ library/*.sqlite.new
 library/*.DbLib
 library/update.log
 library/Custom/KiCad/
+library/Altium/
+library/Symbols/JLC_Generic.SchLib
+library/Footprints/JLC_Generic.PcbLib
 *_JLCPCB_BOM.csv
 *_JLCPCB_CPL.csv
 

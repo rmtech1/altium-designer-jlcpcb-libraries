@@ -1,5 +1,6 @@
 """jlc-altium: keep a JLCPCB parts library for Altium Designer up to date.
 
+    python -m jlc_altium setup             first-time setup (or just run setup.cmd)
     python -m jlc_altium update            download latest data, rebuild the database
     python -m jlc_altium status            show when the database was last built
     python -m jlc_altium search LDO 3.3V   search the downloaded JLCPCB data
@@ -17,7 +18,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from . import build, dblib, download, fab, lookup, parts, source
+from . import build, dblib, download, fab, installer, lookup, parts, source
 from .config import Config, load
 
 
@@ -62,6 +63,11 @@ def cmd_update(cfg: Config, args) -> None:
     if args.write_dblib or not cfg.dblib_path.exists():
         dblib.write(cfg.dblib_path, db)
         print(f"Wrote {cfg.dblib_path}")
+
+
+def cmd_setup(cfg: Config, args) -> None:
+    args.source, args.offline, args.rebuild, args.write_dblib = None, False, False, True
+    sys.exit(installer.run(cfg, args, cmd_update))
 
 
 def cmd_status(cfg: Config, args) -> None:
@@ -144,6 +150,11 @@ def main(argv=None) -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", help="config file (default: config.local.toml or config.toml)")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p = sub.add_parser("setup", help="first-time setup: driver, database, Altium script, daily task")
+    p.add_argument("-y", "--yes", action="store_true", help="don't ask questions")
+    p.add_argument("--no-task", action="store_true", help="don't register the daily update task")
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("update", help="download latest JLCPCB data and rebuild the database")
     p.add_argument("--source", choices=("basic", "full", "file"), help="override source.kind")
