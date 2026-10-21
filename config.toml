@@ -1,0 +1,63 @@
+# jlc-altium configuration.
+#
+# Paths are relative to this file unless absolute. Copy this file to
+# config.local.toml to keep personal changes out of git; the tool prefers
+# config.local.toml when it exists.
+
+[source]
+# Where the raw JLCPCB parts data comes from. Every source is rebuilt
+# upstream once a day from JLCPCB's own parts list.
+#
+#   "basic"  - CDFER basic + preferred parts CSV (~3 MB). Fast; good default
+#              for boards that should only use parts with no feeder fee.
+#   "full"   - CDFER in-stock SQLite database (~1 GB), every part JLCPCB
+#              has at least 5 of in stock.
+#   "file"   - a local jlcparts-format .sqlite3 or CDFER-format .csv at `path`.
+kind = "basic"
+path = ""
+
+# Override the download URLs if a mirror is needed.
+basic_url = "https://cdfer.github.io/jlcpcb-parts-database/jlcpcb-components-basic-preferred.csv"
+full_url = "https://cdfer.github.io/jlcpcb-parts-database/jlcpcb-components.sqlite3"
+
+[filter]
+# Extended parts (feeder fee per unique part) are kept only when they have at
+# least this much stock. Basic and preferred parts are always kept.
+min_stock_extended = 100
+include_extended = true
+
+[output]
+# The SQLite database Altium reads through ODBC, and the DbLib that points at it.
+dir = "library"
+database = "JLCPCB.sqlite"
+dblib = "JLCPCB.DbLib"
+
+# User-maintained part links (LCSC -> your own symbol/footprint). These parts
+# are added to the "Custom" table and get fresh stock/price on every update.
+overrides = "overrides/parts.csv"
+
+[symbols]
+# Schematic library holding the generic symbols below. The DbLib searches the
+# output dir (and its subfolders), so put it in library\Symbols.
+library = "JLC_Generic.SchLib"
+resistor = "Resistor"
+capacitor = "Capacitor"
+inductor = "Inductor"
+ferrite = "Ferrite Bead"
+
+[footprints]
+# Footprint names are built as "<prefix>-<size>", e.g. RES-0603. The prefixes
+# match gsuberland/altium_jlcpcb_libraries so either set of footprints works.
+# Leave `library` empty to let Altium find the footprint in any installed
+# PcbLib; set it to pin one library (searched like the symbol library).
+library = ""
+resistor = "RES"
+capacitor = "CAP"
+inductor = "IND"
+ferrite = "FB"
+
+[fab]
+# CSV of rotation corrections: pattern,rotation (regex against the footprint
+# name). Downloaded with `jlc-altium rotations --download`.
+rotations = "rotations.csv"
+rotations_url = "https://raw.githubusercontent.com/matthewlai/JLCKicadTools/master/jlc_kicad_tools/cpl_rotations_db.csv"
