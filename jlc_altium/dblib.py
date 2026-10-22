@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .build import CUSTOM_TABLE, TABLES
+from .build import all_tables
 
 ODBC_DRIVER = "SQLite3 ODBC Driver"
 
@@ -23,7 +23,7 @@ def connection_string(db: Path) -> str:
 
 
 def render(db: Path, search_path: Path) -> str:
-    tables = list(TABLES.values()) + [CUSTOM_TABLE]
+    tables = all_tables()
     lines = [
         "[OutputDatabaseLinkFile]",
         "Version=1.1",

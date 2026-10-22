@@ -125,7 +125,8 @@ def cmd_check(cfg: Config, args) -> None:
 def cmd_fab(cfg: Config, args) -> None:
     rotations = cfg.path(cfg.section("fab").get("rotations", "rotations.csv"))
     out_dir = Path(args.out) if args.out else Path(args.bom).parent
-    bom_out, cpl_out, missing = fab.run(Path(args.bom), Path(args.pnp), out_dir, rotations)
+    pnp = Path(args.pnp) if args.pnp else Path(args.bom)
+    bom_out, cpl_out, missing = fab.run(Path(args.bom), pnp, out_dir, rotations)
     print(f"Wrote {bom_out}\nWrote {cpl_out}")
     if missing:
         print(f"Not assembled (no LCSC code): {', '.join(missing)}")
@@ -193,7 +194,8 @@ def main(argv=None) -> None:
 
     p = sub.add_parser("fab", help="convert Altium BOM + Pick & Place to JLCPCB format")
     p.add_argument("bom")
-    p.add_argument("pnp")
+    p.add_argument("pnp", nargs="?", help="Pick & Place CSV (omit when the BOM also has positions, "
+                                          "as the JLCPCB Tools script writes it)")
     p.add_argument("--out", help="output folder (default: next to the BOM)")
     p.set_defaults(func=cmd_fab)
 

@@ -47,12 +47,12 @@ daily.
 | | |
 |---|---|
 | 🔄 **Daily auto-update** | A Windows scheduled task downloads the latest JLCPCB data. The download is skipped when nothing changed. |
-| 📚 **Native Altium library** | Search and filter in the Components panel by value, package, tolerance, voltage, or **Basic / Preferred / Extended**. |
+| 📚 **Native Altium library** | Search and sort in the Components panel by value, package, tolerance or voltage. Ready-made **Basic** lists show only parts with no feeder fee. |
 | 🔁 **Refresh placed parts** | *Tools » Update Parameters From Database* updates stock, price and type on parts already in your schematic. |
 | 🧩 **Any LCSC part** | `fetch C6186` downloads the part's EasyEDA symbol, footprint and 3D model. After one import into Altium, the part updates daily like the rest. |
 | 🔎 **Part search** | `search LDO 3.3V SOT-23 --basic` searches the whole JLCPCB catalogue from the terminal. |
 | ✅ **BOM check** | `check` flags out-of-stock, low-stock and Extended parts (which carry a feeder fee). It also suggests Basic parts with the same value and size. |
-| 🏭 **JLCPCB assembly files** | `fab` converts Altium's BOM and Pick & Place outputs into JLCPCB's BOM and CPL formats, with rotation corrections. |
+| 🏭 **One-click JLCPCB files** | The **JLCPCB Tools** script writes JLCPCB's BOM and CPL files straight from your open project, like kicad-jlcpcb-tools' Generate button, with rotation corrections. |
 | 🔒 **Safe while Altium is open** | Updates swap the database atomically, or write into it in a single transaction if Altium has the file locked. |
 | 🪶 **No dependencies** | Pure Python standard library. (`fetch` optionally uses `easyeda2kicad`.) |
 
@@ -183,9 +183,21 @@ Then double-click `setup.cmd` again.
 
 ### Placing passives
 
-In the **Components** panel, choose **JLCPCB** and filter on any column, for
-example `JLCPCB Type = Basic`, `Package = 0603`, `Value = 10kΩ`. Basic parts
-are listed first.
+In the **Components** panel, open the library list and pick a JLCPCB
+library:
+
+- **JLCPCB.DbLib - Resistors**, **Capacitors**, **Inductors**, **Ferrite
+  Beads**: every part, with Basic parts listed first.
+- **… - Basic** versions of each: Basic and Preferred parts only, so there's
+  no feeder fee.
+- **Custom**: the parts you added with `fetch` or `link`.
+
+Type in the search box to narrow the list (e.g. `10k 0603`), or click a
+column header to sort by it.
+
+> ℹ️ The filter pane with checkboxes only appears for Altium 365 cloud
+> Workspace libraries. File-based libraries like this one get the search box
+> and sortable columns, which is why the Basic lists are built in.
 
 ### Keeping a schematic current
 
@@ -234,7 +246,38 @@ Example output:
 The command exits with code 1 when something needs attention, so you can use
 it in scripts.
 
-### Generating JLCPCB assembly files
+### JLCPCB Tools: one-click files from inside Altium
+
+Setup also creates a **JLCPCB Tools** script, `library\Altium\JLC_Tools.pas`,
+in the same script project as the setup script. With your PCB project open
+and focused, go to *File » Run Script…* and run one of these:
+
+| Procedure | What it does |
+|---|---|
+| **`GenerateJLCPCBFiles`** | Reads every component from the PCB (position, rotation, side, footprint) and its LCSC code from the schematic. Writes `<Project>_JLCPCB_BOM.csv` and `<Project>_JLCPCB_CPL.csv` to `Project Outputs\JLCPCB\`, then shows a summary. |
+| **`CheckJLCPCBStock`** | Asks how many boards you're ordering, then checks every part's stock and Basic/Extended status. It suggests Basic alternatives for Extended passives. |
+| **`UpdateJLCPCBDatabase`** | Downloads today's data now, without waiting for the daily task. |
+
+Some details:
+
+- **LCSC codes:** Parts placed from the JLCPCB library already have their
+  `LCSC` parameter. For any other part, add a parameter named `LCSC` with
+  its code, such as `C6186`. Parts without one (mounting holes, test points,
+  DNP parts) are left out and listed.
+- **Placement position:** each part's position is the centre of its pads,
+  which is how JLCPCB places parts.
+- **Gerbers:** make them as usual with your OutJob or *File » Fabrication
+  Outputs*. JLCPCB Tools covers the assembly files.
+
+> 💡 **Make it a button:** right-click a toolbar, choose *Customize…* and
+> add a new command whose process is `ScriptingSystem:RunScript` with the
+> parameters
+> `ProjectName=<full path to>\JLC_Setup.PrjScr|ProcName=JLC_Tools.pas>GenerateJLCPCBFiles`.
+> Then it really is one click.
+
+### Generating JLCPCB files from exported outputs (alternative)
+
+If you'd rather work from Altium's own outputs:
 
 1. Export the BOM as CSV.
 2. Export the Pick & Place file (*File » Assembly Outputs » Generates pick
@@ -271,7 +314,7 @@ footprint name (`^SOT-89,90`). The first matching rule wins.
 | `fetch LCSC…` | Downloads the EasyEDA symbol, footprint and 3D model, and links the part |
 | `link LCSC SYMBOL FOOTPRINT` | Links a part to an existing symbol and footprint (`--symbol-lib`, `--footprint-lib`, `--comment`) |
 | `check BOM.csv [--boards N]` | Checks stock and Basic status for a BOM |
-| `fab BOM.csv PNP.csv [--out DIR]` | Writes JLCPCB BOM and CPL files |
+| `fab BOM.csv [PNP.csv] [--out DIR]` | Writes JLCPCB BOM and CPL files |
 | `rotations [--download]` | Shows or downloads rotation corrections |
 
 Run every command as `python -m jlc_altium <command>`. Add `--help` to any of
@@ -324,6 +367,19 @@ manufacturer-correct EasyEDA model.
 </details>
 
 <details>
+<summary><b>Why can't I filter with checkboxes like in my Workspace libraries?</b></summary>
+
+In current Altium versions, the Components panel's filter pane only works on
+Altium 365 cloud Workspace libraries. File-based libraries, including
+database libraries like this one, only get the search box and sortable
+columns. That's normal.
+
+To make up for it, every family also comes as a **Basic** list. Uploading
+the parts into your Workspace would add filtering, but they would then stop
+updating automatically.
+</details>
+
+<details>
 <summary><b>Can I update while Altium is open?</b></summary>
 
 Yes. If Altium has the database locked, the update writes into it in a single
@@ -363,8 +419,9 @@ It is a community project and is not affiliated with JLCPCB or Altium.
 ## 🗺 Roadmap
 
 - [ ] Prebuilt nightly database as a GitHub release (no 1 GB download)
-- [ ] In-Altium script to run updates and open the JLCPCB page of a selected part
-- [ ] Generated footprints for standard chip sizes
+- [x] In-Altium scripts: one-click JLCPCB files, stock check, database update
+- [ ] In-Altium part picker: search JLCPCB and assign an LCSC code to the selected component
+- [x] Generated footprints for standard chip sizes (0201–1210)
 - [ ] More generic families (e.g. chip LEDs with verified polarity)
 - [ ] Altium 365 Workspace component export
 

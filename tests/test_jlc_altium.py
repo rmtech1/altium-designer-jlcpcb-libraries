@@ -99,6 +99,10 @@ class BuildTest(unittest.TestCase):
         con = sqlite3.connect(self.cfg.database_path)
         tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertEqual(tables, set(build.TABLES.values()) | {build.CUSTOM_TABLE})
+        views = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='view'")}
+        self.assertEqual(views, {t + build.BASIC_SUFFIX for t in build.TABLES.values()})
+        basic = {r[0] for r in con.execute('SELECT "LCSC" FROM "Resistors - Basic"')}
+        self.assertEqual(basic, {"C25804"})
         self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 20261022)
         con.close()
 
@@ -132,6 +136,8 @@ class BuildTest(unittest.TestCase):
         con.close()
         build._copy_into(other, self.cfg.database_path)
         self.assertEqual(list(self.rows("Resistors")), ["C1"])
+        # Views from the old database are dropped with their tables.
+        self.assertRaises(sqlite3.OperationalError, self.rows, "Resistors - Basic")
         con = sqlite3.connect(self.cfg.database_path)
         self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 20261022)
         con.close()
@@ -253,6 +259,32 @@ class AltiumScriptTest(unittest.TestCase):
         prj = altium_script.write(cfg)
         self.assertIn("DocumentPath=JLC_Setup.pas", prj.read_text())
         self.assertTrue((prj.parent / "JLC_Setup.pas").exists())
+
+    def test_tools_script(self):
+        cfg = make_config(Path(tempfile.mkdtemp()))
+        prj = altium_script.write(cfg, python=r"C:\Py\python.exe")
+        self.assertIn("DocumentPath=JLC_Tools.pas", prj.read_text())
+        text = (prj.parent / "JLC_Tools.pas").read_text(encoding="utf-8")
+        self.assertIn(r"PythonExe = 'C:\Py\python.exe';", text)
+        for proc in ("GenerateJLCPCBFiles", "CheckJLCPCBStock", "UpdateJLCPCBDatabase"):
+            self.assertIn(f"Procedure {proc};", text)
+        self.assertNotIn("%(", text)
+
+    def test_fab_from_tools_csv(self):
+        # The single CSV JLC_Tools writes serves as both BOM and placement file.
+        tmp = Path(tempfile.mkdtemp())
+        parts_csv = tmp / "Board.csv"
+        parts_csv.write_text(
+            '"Designator","Comment","Footprint","LCSC","Center-X(mm)","Center-Y(mm)","Rotation","Layer"\n'
+            '"R1","10k","RES-0603","C25804",12.5000,3.0000,90.0000,TopLayer\n'
+            '"R2","10k","RES-0603","C25804",14.5000,3.0000,0.0000,BottomLayer\n'
+            '"MH1","","HOLE","",0.0000,0.0000,0.0000,TopLayer\n', encoding="utf-8")
+        bom_out, cpl_out, missing = fab.run(parts_csv, parts_csv, tmp, tmp / "none.csv")
+        self.assertEqual(missing, ["MH1"])
+        self.assertIn('C25804', bom_out.read_text(encoding="utf-8"))
+        cpl = cpl_out.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(cpl[1], "R1,12.5000mm,3.0000mm,Top,90")
+        self.assertEqual(cpl[2], "R2,14.5000mm,3.0000mm,Bottom,0")
 
     def test_courtyard_covers_pads(self):
         for size, ((pad_l, pad_w, pitch), _) in footprints.CHIP_LANDS.items():
