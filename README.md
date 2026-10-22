@@ -86,83 +86,98 @@ daily.
 
 ## 🚀 Quick start
 
-```bat
-git clone https://github.com/rmtech1/altium-designer-jlcpcb-libraries
-cd altium-designer-jlcpcb-libraries
-python -m jlc_altium update
-powershell -ExecutionPolicy Bypass -File scripts\install-scheduled-task.ps1
-```
+Setup takes **two steps**:
 
-Next, install `library\JLCPCB.DbLib` in Altium. The full walkthrough is below.
+1. **Download** this project ([ZIP](https://github.com/rmtech1/altium-designer-jlcpcb-libraries/archive/refs/heads/main.zip) or `git clone`), then **double-click `setup.cmd`**.
+2. **In Altium:** *File » Run Script » Browse*, pick `library\Altium\JLC_Setup.PrjScr`, then run **Setup**.
+
+After that, the library updates itself every day. 🎉
 
 ## 📦 Installation
 
-### Requirements
+### What you need
 
 - **Windows** with **Altium Designer** (any version with Database Library support; the 64-bit releases from AD18 onward).
-- **Python 3.11 or newer**: [python.org/downloads](https://www.python.org/downloads/). Tick **"Add python.exe to PATH"** during install.
-- **SQLite3 ODBC Driver, 64-bit**: [ch-werner.de/sqliteodbc](http://www.ch-werner.de/sqliteodbc/) (`sqliteodbc_w64.exe`). Altium is 64-bit, so the 32-bit driver will not work.
-- *Optional:* `pip install easyeda2kicad`, which the `fetch` command needs.
+- That's it. Setup installs the rest (Python and the SQLite ODBC driver) for you if it's missing.
+- *Optional:* [Git for Windows](https://git-scm.com/download/win), to download with `git clone` and update with `git pull`. Without Git, use the ZIP.
 
-### Step 1: Get the code and build the database
+### Step 1: Download
+
+Choose a **permanent folder**, such as `C:\Altium\`. The daily update and Altium will point at it.
+
+**Option A: ZIP (no Git needed)**
+
+1. Click **Code » Download ZIP** on the [repository page](https://github.com/rmtech1/altium-designer-jlcpcb-libraries), or use [this direct link](https://github.com/rmtech1/altium-designer-jlcpcb-libraries/archive/refs/heads/main.zip).
+2. Right-click the ZIP, choose **Extract All…**, and extract it to your folder. The extracted folder is named `altium-designer-jlcpcb-libraries-main`; you can rename it.
+
+**Option B: Git**
 
 ```bat
+cd C:\Altium
 git clone https://github.com/rmtech1/altium-designer-jlcpcb-libraries
-cd altium-designer-jlcpcb-libraries
-python -m jlc_altium update
 ```
 
-This creates:
+### Step 2: Run `setup.cmd`
 
-- `library\JLCPCB.sqlite`: the parts database.
-- `library\JLCPCB.DbLib`: the Altium library that connects to it. It holds an absolute path, so it is generated on your machine rather than committed.
+Double-click **`setup.cmd`** in the project folder. Setup goes through these
+steps, skipping any that are already done:
 
-### Step 2: Create the generic symbols
+| | What setup does |
+|---|---|
+| 🐍 | Checks for Python 3.11+. If it's missing, offers to install it with `winget`. Afterwards, double-click `setup.cmd` again. |
+| 🔌 | Installs the **64-bit SQLite3 ODBC driver** that Altium uses to read the database. Approve the Windows administrator prompt. |
+| 📥 | Downloads today's JLCPCB parts data and builds `library\JLCPCB.sqlite` and `library\JLCPCB.DbLib`. |
+| 📝 | Writes the one-time Altium script `library\Altium\JLC_Setup.PrjScr` with your folder paths filled in. |
+| ⏰ | Registers a **daily update task** in Windows Task Scheduler, at 07:45 by default. |
 
-Create `library\Symbols\JLC_Generic.SchLib` with four symbols named exactly
-**`Resistor`**, **`Capacitor`**, **`Inductor`** and **`Ferrite Bead`**. Pick
-one of these ways:
+You can run `setup.cmd` again at any time, for example after moving the
+folder. It only redoes what's needed.
 
-- **Import the ones provided:** In Altium, go to *File » Import Wizard »
-  KiCad* and import `library\Symbols\JLC_Generic.kicad_sym`. Save the result
-  as `library\Symbols\JLC_Generic.SchLib`.
-- **Use your own:** Copy symbols you like (for example from *Miscellaneous
-  Devices.IntLib*) into a new SchLib and rename them.
+> If the driver can't be downloaded automatically, setup opens the
+> [driver page](http://www.ch-werner.de/sqliteodbc/). Install
+> `sqliteodbc_w64.exe` from there and press Enter in the setup window.
 
-> The names can be changed under `[symbols]` in `config.toml`.
+### Step 3: Run the setup script in Altium (once)
 
-### Step 3: Create the footprints
+1. In Altium Designer: **File » Run Script… » Browse…**
+2. Select `library\Altium\JLC_Setup.PrjScr`.
+3. Choose **`JLC_Setup.pas` » `Setup`**, then click **OK**.
 
-Any PcbLib that is installed or added to your project needs footprints named
-`RES-<size>`, `CAP-<size>`, `IND-<size>` and `FB-<size>`, for example
-`RES-0603`.
+The script:
 
-- *Tools » IPC Compliant Footprints Batch Generator* makes these quickly.
-- **0402, 0603 and 0805** cover every Basic passive and most Extended ones.
-- If you already use gsuberland's libraries, your footprints already match.
+- Creates `library\Symbols\JLC_Generic.SchLib` with the `Resistor`, `Capacitor`, `Inductor` and `Ferrite Bead` symbols.
+- Creates `library\Footprints\JLC_Generic.PcbLib` with `RES-`, `CAP-`, `IND-` and `FB-` footprints for sizes **0201, 0402, 0603, 0805, 1206 and 1210**.
+- **Installs** the JLCPCB DbLib and the footprint library in the Components panel.
+- Shows a summary of what it did.
 
-### Step 4: Install the library in Altium
+It never overwrites library files that already exist, so your own edits are
+safe.
 
-1. Open the **Components** panel, then go to **⋮ » File-based Libraries
-   Preferences » Installed » Install** and choose `library\JLCPCB.DbLib`.
-2. Open the DbLib once. Confirm the five tables are listed and that
-   **Part Number** is the key field, then **save**.
+🎉 **Done.** Open the **Components** panel, pick **JLCPCB**, and start placing parts.
 
-### Step 5: Turn on daily updates
+> 📐 The generated footprints use IPC-7351 nominal land sizes. Review them
+> against your own standards. Parts in other sizes (01005, 1812, 2010, 2512…)
+> need a footprint of that name in any installed PcbLib.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\install-scheduled-task.ps1
-```
+### Updating the tool itself
 
-This runs every day at 07:45 by default. Options:
+- **Git:** run `git pull` in the project folder.
+- **ZIP:** download the new ZIP and extract it over the old folder. The ZIP's
+  empty `overrides/parts.csv` overwrites yours, so back it up first.
 
-- `-At 09:00` changes the time.
-- `-Remove` uninstalls the task.
+Then double-click `setup.cmd` again.
 
-The log goes to `library\update.log`. To update by hand, double-click
-`scripts\update.cmd`.
+<details>
+<summary><b>Manual setup</b> (if you'd rather not use <code>setup.cmd</code> or the Altium script)</summary>
 
-🎉 **Done.** Your JLCPCB library now refreshes itself every day.
+1. Install [Python 3.11+](https://www.python.org/downloads/) (tick *Add python.exe to PATH*) and the 64-bit [SQLite3 ODBC Driver](http://www.ch-werner.de/sqliteodbc/) (`sqliteodbc_w64.exe`).
+2. Run `python -m jlc_altium update` in the project folder.
+3. Create `library\Symbols\JLC_Generic.SchLib` with symbols named `Resistor`, `Capacitor`, `Inductor` and `Ferrite Bead`. You can import `library\Symbols\JLC_Generic.kicad_sym` with *File » Import Wizard » KiCad*, or copy symbols from *Miscellaneous Devices.IntLib*.
+4. Make footprints named `RES-0603`, `CAP-0402` and so on in any installed PcbLib. *Tools » IPC Compliant Footprints Batch Generator* helps here, and gsuberland's footprints already use these names.
+5. Install `library\JLCPCB.DbLib`: in the Components panel, go to *⋮ » File-based Libraries Preferences » Installed » Install*.
+6. Schedule the daily update: `powershell -ExecutionPolicy Bypass -File scripts\install-scheduled-task.ps1` (add `-At 09:00` to change the time, or `-Remove` to delete the task).
+
+</details>
 
 ## 🛠 Usage
 
@@ -249,6 +264,7 @@ footprint name (`^SOT-89,90`). The first matching rule wins.
 
 | Command | What it does |
 |---|---|
+| `setup [--yes] [--no-task]` | First-time setup, run by `setup.cmd`: ODBC driver, database, Altium script, daily task. Safe to re-run. |
 | `update` | Downloads the latest data if it changed and rebuilds the database. Flags: `--source basic\|full\|file`, `--offline`, `--rebuild`, `--write-dblib` |
 | `status` | Shows when the database was built and the part count per table |
 | `search TERMS… [--basic] [--limit N]` | Searches the JLCPCB catalogue |
@@ -272,6 +288,7 @@ personal changes; git ignores that file, and it takes priority.
 | `filter.min_stock_extended` | `100` | The minimum stock for an Extended part to be listed. |
 | `filter.include_extended` | `true` | Whether Extended passives are listed at all. |
 | `[symbols]` | `Resistor`, … | Symbol names in `JLC_Generic.SchLib`. |
+| `setup.update_time` | `07:45` | Time of the daily update task. Run `setup.cmd` again after changing it. |
 | `[footprints]` | `RES`, `CAP`, … | Footprint name prefixes, plus an optional pinned PcbLib. |
 
 > 💡 Use `full` if you want Extended passives, or `check`/`search` coverage of Extended ICs.
@@ -334,7 +351,9 @@ It is a community project and is not affiliated with JLCPCB or Altium.
 
 | Problem | Fix |
 |---|---|
-| *"Data source name not found"* when opening the DbLib | The 64-bit SQLite3 ODBC driver is missing. Check *ODBC Data Sources (64-bit) » Drivers*. |
+| *"Data source name not found"* when opening the DbLib | The 64-bit SQLite3 ODBC driver is missing. Run `setup.cmd` again, or check *ODBC Data Sources (64-bit) » Drivers*. |
+| The Altium setup script stops with an error | Send the error message in an [issue](https://github.com/rmtech1/altium-designer-jlcpcb-libraries/issues) with your Altium version. Meanwhile, finish with the *Manual setup* steps; the database and daily update from `setup.cmd` still work. |
+| `setup.cmd` says Python was not found right after installing it | Close the window and double-click `setup.cmd` again so it picks up the new PATH. |
 | Tables or parameters look wrong | Run `update --write-dblib`, open the DbLib in Altium, check the field mappings, and save. |
 | *Symbol not found* when placing | The names in `[symbols]` must match the SchLib exactly. The SchLib must be in `library\` or a subfolder. |
 | Footprint missing on PCB | Make sure a PcbLib containing e.g. `RES-0603` is installed or in the project. |

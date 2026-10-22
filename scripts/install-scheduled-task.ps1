@@ -18,6 +18,7 @@
 param(
     [string]$At = "07:45",
     [string]$TaskName = "JLCPCB Altium Library Update",
+    [string]$Python = "",
     [switch]$Remove
 )
 
@@ -30,8 +31,9 @@ if ($Remove) {
 }
 
 $repo = Split-Path -Parent $PSScriptRoot
-$python = (Get-Command python -ErrorAction SilentlyContinue).Source
-if (-not $python) { throw "python not found on PATH. Install Python 3.11+ from python.org first." }
+$python = $Python
+if (-not $python) { $python = (Get-Command python -ErrorAction SilentlyContinue).Source }
+if (-not $python) { throw "python not found on PATH. Install Python 3.11+ from python.org first, or pass -Python." }
 
 $log = Join-Path $repo "library\update.log"
 $cmd = "/c `"`"$python`" -m jlc_altium update >> `"$log`" 2>&1`""

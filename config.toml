@@ -61,3 +61,11 @@ ferrite = "FB"
 # name). Downloaded with `jlc-altium rotations --download`.
 rotations = "rotations.csv"
 rotations_url = "https://raw.githubusercontent.com/matthewlai/JLCKicadTools/master/jlc_kicad_tools/cpl_rotations_db.csv"
+
+[setup]
+# Used by `setup` / setup.cmd. The driver installer is only ever downloaded
+# over HTTPS; if that fails, setup opens odbc_page for a manual install.
+odbc_url = "https://www.ch-werner.de/sqliteodbc/sqliteodbc_w64.exe"
+odbc_page = "http://www.ch-werner.de/sqliteodbc/"
+# Time of the daily update task (local time, 24h).
+update_time = "07:45"
