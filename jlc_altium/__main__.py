@@ -73,8 +73,9 @@ def cmd_setup(cfg: Config, args) -> None:
 def cmd_status(cfg: Config, args) -> None:
     db = _require(cfg.database_path)
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    updated = con.execute("SELECT value FROM _meta WHERE key='updated'").fetchone()
-    print(f"{db}\n  built from data of {updated[0] if updated else 'unknown date'}")
+    v = str(con.execute("PRAGMA user_version").fetchone()[0])
+    updated = f"{v[:4]}-{v[4:6]}-{v[6:]}" if len(v) == 8 else "unknown date"
+    print(f"{db}\n  built from data of {updated}")
     for table in list(build.TABLES.values()) + [build.CUSTOM_TABLE]:
         n = con.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
         print(f"  {table:<14} {n:>7} parts")

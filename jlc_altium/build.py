@@ -189,8 +189,9 @@ def build(parts, cfg: Config, today: str | None = None) -> dict[str, int]:
     _insert(con, CUSTOM_TABLE, COMMON_COLUMNS, custom)
     counts[CUSTOM_TABLE] = len(custom)
 
-    con.execute("CREATE TABLE _meta (key TEXT PRIMARY KEY, value TEXT)")
-    con.execute("INSERT INTO _meta VALUES ('updated', ?)", (today,))
+    # The build date goes in the header rather than a table: Altium lists
+    # every table in the database as a library.
+    con.execute(f"PRAGMA user_version = {int(today.replace('-', ''))}")
     con.commit()
     con.execute("VACUUM")
     con.close()
@@ -217,6 +218,8 @@ def _copy_into(src: Path, dest: Path) -> None:
         for name, sql in con.execute("SELECT name, sql FROM new.sqlite_master WHERE type='table'").fetchall():
             con.execute(sql)
             con.execute(f'INSERT INTO main."{name}" SELECT * FROM new."{name}"')
+        version = con.execute("PRAGMA new.user_version").fetchone()[0]
+        con.execute(f"PRAGMA main.user_version = {int(version)}")
         con.execute("COMMIT")
     except BaseException:
         con.execute("ROLLBACK")

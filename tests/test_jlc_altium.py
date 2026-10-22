@@ -93,6 +93,15 @@ class BuildTest(unittest.TestCase):
                          ("100nF", "50V", "X7R", "±10%"))
         self.assertEqual(self.rows("Ferrite Beads")["C1015"]["Value"], "600Ω@100MHz")
 
+    def test_only_part_tables(self):
+        # Altium shows every table as a library, so nothing else may exist.
+        build.build(source.read(self.raw), self.cfg, today="2026-10-22")
+        con = sqlite3.connect(self.cfg.database_path)
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertEqual(tables, set(build.TABLES.values()) | {build.CUSTOM_TABLE})
+        self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 20261022)
+        con.close()
+
     def test_low_stock_extended_dropped(self):
         build.build(source.read(self.raw, 100), self.cfg)
         self.assertNotIn("C7777", self.rows("Resistors"))
@@ -118,8 +127,14 @@ class BuildTest(unittest.TestCase):
         con.execute("INSERT INTO Resistors VALUES ('C1')")
         con.commit()
         con.close()
+        con = sqlite3.connect(other)
+        con.execute("PRAGMA user_version = 20261022")
+        con.close()
         build._copy_into(other, self.cfg.database_path)
         self.assertEqual(list(self.rows("Resistors")), ["C1"])
+        con = sqlite3.connect(self.cfg.database_path)
+        self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0], 20261022)
+        con.close()
 
     def test_csv_source(self):
         path = self.tmp / "basic.csv"
