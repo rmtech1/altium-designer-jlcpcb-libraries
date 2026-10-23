@@ -85,6 +85,13 @@ def cmd_status(cfg: Config, args) -> None:
 def cmd_search(cfg: Config, args) -> None:
     raw, _ = raw_source(cfg)
     hits = lookup.search(_require(raw), args.terms, args.basic, args.limit)
+    if args.tsv:
+        kind = cfg.section("source").get("kind", "basic")
+        note = (f"{len(hits)} matches" + (f" (first {args.limit})" if len(hits) >= args.limit else "") +
+                (" - searching Basic/Preferred parts only; set source.kind = \"full\" in "
+                 "config.toml to search every JLCPCB part" if kind == "basic" else ""))
+        lookup.write_tsv(Path(args.tsv), hits, note)
+        return
     for p in hits:
         print(f"{p['lcsc']:<10} {build.jlc_type(p):<9} {p['stock']:>8}  {p['package']:<16} "
               f"{p['mfr']:<24} {p['description'][:70]}")
@@ -172,6 +179,7 @@ def main(argv=None) -> None:
     p.add_argument("terms", nargs="+")
     p.add_argument("--basic", action="store_true", help="basic and preferred parts only")
     p.add_argument("--limit", type=int, default=30)
+    p.add_argument("--tsv", help="write results to this tab-separated file (used by the Altium part picker)")
     p.set_defaults(func=cmd_search)
 
     p = sub.add_parser("fetch", help="download EasyEDA symbol/footprint/3D for LCSC parts")

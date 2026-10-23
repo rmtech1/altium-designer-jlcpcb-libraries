@@ -50,6 +50,7 @@ daily.
 | 📚 **Native Altium library** | Search and sort in the Components panel by value, package, tolerance or voltage. Ready-made **Basic** lists show only parts with no feeder fee. |
 | 🔁 **Refresh placed parts** | *Tools » Update Parameters From Database* updates stock, price and type on parts already in your schematic. |
 | 🧩 **Any LCSC part** | `fetch C6186` downloads the part's EasyEDA symbol, footprint and 3D model. After one import into Altium, the part updates daily like the rest. |
+| 🧲 **Part picker in Altium** | Select parts on the schematic, search JLCPCB in a window, and assign the LCSC code with one click, like kicad-jlcpcb-tools' search dialog. |
 | 🔎 **Part search** | `search LDO 3.3V SOT-23 --basic` searches the whole JLCPCB catalogue from the terminal. |
 | ✅ **BOM check** | `check` flags out-of-stock, low-stock and Extended parts (which carry a feeder fee). It also suggests Basic parts with the same value and size. |
 | 🏭 **One-click JLCPCB files** | The **JLCPCB Tools** script writes JLCPCB's BOM and CPL files straight from your open project, like kicad-jlcpcb-tools' Generate button, with rotation corrections. |
@@ -246,6 +247,35 @@ Example output:
 The command exits with code 1 when something needs attention, so you can use
 it in scripts.
 
+### Part Picker: assign LCSC parts inside Altium
+
+For ICs, connectors and anything else not placed from the JLCPCB library:
+
+1. Select one or more components on a schematic sheet.
+2. *File » Run Script…* » **`JLC_Picker.pas` » `JLCPCBPartPicker`**.
+3. The search box is pre-filled from the part's comment and footprint size,
+   e.g. `10k 0603` or `AMS1117-3.3`. Press **Enter** to search.
+4. Results are listed with Basic parts first, then Preferred, then by stock.
+   The columns are LCSC code, type, stock, package, manufacturer part number,
+   manufacturer, price and description.
+   - Tick **Basic / Preferred only** to hide Extended parts.
+   - **Open on JLCPCB** shows the part's page in your browser.
+5. Click **Assign LCSC**, or double-click the row. The code is written to
+   each selected component's `LCSC` parameter.
+   - Tick **Also assign to every part with the same comment and
+     footprint** to do all matching parts on the sheet at once, like
+     kicad-jlcpcb-tools' "select alike".
+6. Save the schematic. `GenerateJLCPCBFiles` and `CheckJLCPCBStock` pick up
+   the codes from there.
+
+> 🔎 With the default `basic` data source, the picker searches Basic and
+> Preferred parts only, about 3 MB of data. To search **every** JLCPCB part,
+> set `source.kind = "full"` in `config.local.toml` and run `setup.cmd`
+> again. That downloads about 1 GB once, and then only when it changes.
+>
+> The picker only links the LCSC code. If the part also needs a symbol or
+> footprint, use [`fetch`](#adding-ics-and-other-parts).
+
 ### JLCPCB Tools: one-click files from inside Altium
 
 Setup also creates a **JLCPCB Tools** script, `library\Altium\JLC_Tools.pas`,
@@ -420,7 +450,7 @@ It is a community project and is not affiliated with JLCPCB or Altium.
 
 - [ ] Prebuilt nightly database as a GitHub release (no 1 GB download)
 - [x] In-Altium scripts: one-click JLCPCB files, stock check, database update
-- [ ] In-Altium part picker: search JLCPCB and assign an LCSC code to the selected component
+- [x] In-Altium part picker: search JLCPCB and assign an LCSC code to the selected components
 - [x] Generated footprints for standard chip sizes (0201–1210)
 - [ ] More generic families (e.g. chip LEDs with verified polarity)
 - [ ] Altium 365 Workspace component export

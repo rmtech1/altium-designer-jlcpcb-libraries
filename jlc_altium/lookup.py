@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import categorize, source
 from .altium_csv import column, designators, lcsc_column, read_table
-from .build import TABLES, jlc_type
+from .build import TABLES, jlc_type, unit_price
 
 
 def find(raw: Path, codes: set[str]) -> dict[str, dict]:
@@ -90,3 +90,26 @@ def check_bom(bom_path: Path, raw: Path, db: Path, boards: int = 1) -> list[dict
                 item["alternatives"] = " ".join(f"{a['LCSC']}({a['JLCPCB Type']})" for a in alts)
         report.append(item)
     return report
+
+
+TSV_COLUMNS = ["LCSC", "Type", "Stock", "Package", "Manufacturer Part Number",
+               "Manufacturer", "Price", "Description"]
+
+
+def write_tsv(path: Path, hits: list[dict], note: str = "") -> None:
+    """Search results for the Altium part picker: one tab-separated row per part.
+
+    The first line is a note shown above the results (e.g. which data was
+    searched); tabs and newlines inside fields are replaced so every row
+    splits cleanly in DelphiScript.
+    """
+    def clean(v) -> str:
+        return " ".join(str(v).split())
+
+    lines = [clean(note), "\t".join(TSV_COLUMNS)]
+    for p in hits:
+        lines.append("\t".join(clean(v) for v in (
+            p["lcsc"], jlc_type(p), p["stock"], p["package"], p["mfr"], p["manufacturer"],
+            unit_price(p["price"], 1), p["description"])))
+    # BOM so Delphi's TStringList.LoadFromFile reads it as UTF-8 (Ω, µ, ±).
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8-sig")

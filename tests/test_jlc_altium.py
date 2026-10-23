@@ -286,6 +286,48 @@ class AltiumScriptTest(unittest.TestCase):
         self.assertEqual(cpl[1], "R1,12.5000mm,3.0000mm,Top,90")
         self.assertEqual(cpl[2], "R2,14.5000mm,3.0000mm,Bottom,0")
 
+    def test_picker_script(self):
+        cfg = make_config(Path(tempfile.mkdtemp()))
+        prj = altium_script.write(cfg, python=r"C:\Py\python.exe")
+        self.assertIn("DocumentPath=JLC_Picker.pas", prj.read_text())
+        pas = (prj.parent / "JLC_Picker.pas").read_text(encoding="utf-8")
+        dfm = (prj.parent / "JLC_Picker.dfm").read_text(encoding="utf-8")
+        self.assertIn("Procedure JLCPCBPartPicker;", pas)
+        import re
+        self.assertIsNone(re.search(r"%\(\w+\)s", pas))  # every placeholder filled
+        self.assertIn("'\"&|<>^%()!'", pas)  # %% formatted down to a single %
+        # Every event handler the form names exists in the script, and vice versa.
+        import re
+        handlers = set(re.findall(r"^\s*On\w+ = (\w+)", dfm, re.M))
+        methods = set(re.findall(r"Procedure TFormJLCPicker\.(\w+)\(", pas))
+        self.assertEqual(handlers, methods)
+        # Every control the script touches is declared in the form.
+        controls = set(re.findall(r"object (\w+): T", dfm))
+        used = set(re.findall(r"FormJLCPicker\.(\w+)\.", pas))
+        self.assertLessEqual(used, controls)
+        # No helper name clashes across units sharing the script project namespace.
+        names = {}
+        for f in ("JLC_Setup.pas", "JLC_Tools.pas", "JLC_Picker.pas"):
+            text = (prj.parent / f).read_text(encoding="utf-8")
+            for n in re.findall(r"^(?:Procedure|Function) (\w+)[ (:;]", text, re.M):
+                self.assertNotIn(n, names, f"{n} defined in {names.get(n)} and {f}")
+                names[n] = f
+
+    def test_search_tsv(self):
+        tmp = Path(tempfile.mkdtemp())
+        raw = tmp / "cache.sqlite3"
+        make_jlcparts_db(raw)
+        out = tmp / "r.tsv"
+        lookup.write_tsv(out, lookup.search(raw, ["10kΩ"]), note="2 matches")
+        raw_bytes = out.read_bytes()
+        self.assertTrue(raw_bytes.startswith(b"\xef\xbb\xbf"))  # BOM for Delphi
+        lines = raw_bytes.decode("utf-8-sig").splitlines()
+        self.assertEqual(lines[0], "2 matches")
+        self.assertEqual(lines[1].split("\t"), lookup.TSV_COLUMNS)
+        first = lines[2].split("\t")
+        self.assertEqual(len(first), len(lookup.TSV_COLUMNS))
+        self.assertEqual(first[:3], ["C25804", "Basic", "5000000"])
+
     def test_courtyard_covers_pads(self):
         for size, ((pad_l, pad_w, pitch), _) in footprints.CHIP_LANDS.items():
             cx, cy = footprints.courtyard(size)

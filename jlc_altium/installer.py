@@ -127,8 +127,10 @@ Last step, once, inside Altium Designer:
 That creates the symbol and footprint libraries and installs the JLCPCB
 library in the Components panel. After that, the library updates itself.
 
-For one-click JLCPCB files, run JLC_Tools.pas > GenerateJLCPCBFiles from the
-same script project (or add it to a toolbar). See README "JLCPCB Tools".
+The same script project also has:
+  JLC_Picker.pas > JLCPCBPartPicker    search JLCPCB, assign LCSC codes to selected parts
+  JLC_Tools.pas  > GenerateJLCPCBFiles one-click JLCPCB BOM + CPL
+See README "Part Picker" and "JLCPCB Tools".
 """)
     if IS_WINDOWS and not args.yes and sys.stdin.isatty():
         if input("Open the folder with the script now? [Y/n] ").strip().lower() not in ("n", "no"):

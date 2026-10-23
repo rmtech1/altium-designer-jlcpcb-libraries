@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import footprints
+from . import footprints, picker_script
 from .config import Config
 
 SCRIPT_NAME = "JLC_Setup"
@@ -347,7 +347,7 @@ Var
   Cmd : String;
 Begin
   Shell := CreateOleObject('WScript.Shell');
-  Cmd := 'cmd /s /c "cd /d ' + Q(RepoDir) + ' && ' + Q(PythonExe) + ' -m jlc_altium ' + Args +
+  Cmd := 'cmd /s /c "cd /d ' + Q(RepoDir) + ' && ' + Q(PythonExe) + ' -X utf8 -m jlc_altium ' + Args +
          ' > ' + Q(LogFile) + ' 2>&1"';
   Result := Shell.Run(Cmd, 0, True);
 End;
@@ -586,6 +586,9 @@ DocumentPath=JLC_Setup.pas
 
 [Document2]
 DocumentPath=JLC_Tools.pas
+
+[Document3]
+DocumentPath=JLC_Picker.pas
 """
 
 
@@ -631,5 +634,9 @@ def write(cfg: Config, python: str | None = None) -> Path:
     (folder / f"{SCRIPT_NAME}.pas").write_text(render(cfg), encoding="utf-8", newline="\r\n")
     (folder / f"{TOOLS_NAME}.pas").write_text(render_tools(cfg, python or sys.executable),
                                               encoding="utf-8", newline="\r\n")
+    (folder / f"{picker_script.PICKER_NAME}.pas").write_text(
+        picker_script.render(cfg, python or sys.executable), encoding="utf-8", newline="\r\n")
+    (folder / f"{picker_script.PICKER_NAME}.dfm").write_text(
+        picker_script.PICKER_DFM, encoding="utf-8", newline="\r\n")
     (folder / f"{SCRIPT_NAME}.PrjScr").write_text(PRJSCR, encoding="utf-8", newline="\r\n")
     return folder / f"{SCRIPT_NAME}.PrjScr"
