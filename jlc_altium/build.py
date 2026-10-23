@@ -28,6 +28,17 @@ TABLES = {
     "ferrite": "Ferrite Beads",
 }
 CUSTOM_TABLE = "Custom"
+# Filtered views, listed by Altium as extra libraries. File-based libraries
+# get no filter pane in the Components panel, so common filters are built in.
+BASIC_SUFFIX = " - Basic"
+
+
+def all_tables() -> list[str]:
+    """Every table and view Altium will list, in display order."""
+    names = []
+    for table in TABLES.values():
+        names += [table, table + BASIC_SUFFIX]
+    return names + [CUSTOM_TABLE]
 
 COMMON_COLUMNS = [
     "Part Number", "Library Ref", "Library Path", "Footprint Ref", "Footprint Path",
@@ -188,9 +199,13 @@ def build(parts, cfg: Config, today: str | None = None) -> dict[str, int]:
     _create_table(con, CUSTOM_TABLE, COMMON_COLUMNS)
     _insert(con, CUSTOM_TABLE, COMMON_COLUMNS, custom)
     counts[CUSTOM_TABLE] = len(custom)
+    for table in TABLES.values():
+        con.execute(f'CREATE VIEW "{table}{BASIC_SUFFIX}" AS SELECT * FROM "{table}" '
+                    f'WHERE "JLCPCB Type" != \'Extended\'')
 
-    con.execute("CREATE TABLE _meta (key TEXT PRIMARY KEY, value TEXT)")
-    con.execute("INSERT INTO _meta VALUES ('updated', ?)", (today,))
+    # The build date goes in the header rather than a table: Altium lists
+    # every table in the database as a library.
+    con.execute(f"PRAGMA user_version = {int(today.replace('-', ''))}")
     con.commit()
     con.execute("VACUUM")
     con.close()
@@ -211,12 +226,18 @@ def _copy_into(src: Path, dest: Path) -> None:
     con.execute("ATTACH DATABASE ? AS new", (str(src),))
     con.execute("BEGIN IMMEDIATE")
     try:
-        old = [r[0] for r in con.execute("SELECT name FROM main.sqlite_master WHERE type='table'")]
-        for name in old:
-            con.execute(f'DROP TABLE main."{name}"')
-        for name, sql in con.execute("SELECT name, sql FROM new.sqlite_master WHERE type='table'").fetchall():
+        for name, kind in con.execute(
+                "SELECT name, type FROM main.sqlite_master WHERE type IN ('view', 'table') "
+                "ORDER BY type = 'table'").fetchall():
+            con.execute(f'DROP {kind.upper()} main."{name}"')
+        objects = con.execute("SELECT name, type, sql FROM new.sqlite_master "
+                              "WHERE type IN ('table', 'view') ORDER BY type = 'view'").fetchall()
+        for name, kind, sql in objects:
             con.execute(sql)
-            con.execute(f'INSERT INTO main."{name}" SELECT * FROM new."{name}"')
+            if kind == "table":
+                con.execute(f'INSERT INTO main."{name}" SELECT * FROM new."{name}"')
+        version = con.execute("PRAGMA new.user_version").fetchone()[0]
+        con.execute(f"PRAGMA main.user_version = {int(version)}")
         con.execute("COMMIT")
     except BaseException:
         con.execute("ROLLBACK")

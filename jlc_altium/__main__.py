@@ -73,8 +73,9 @@ def cmd_setup(cfg: Config, args) -> None:
 def cmd_status(cfg: Config, args) -> None:
     db = _require(cfg.database_path)
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    updated = con.execute("SELECT value FROM _meta WHERE key='updated'").fetchone()
-    print(f"{db}\n  built from data of {updated[0] if updated else 'unknown date'}")
+    v = str(con.execute("PRAGMA user_version").fetchone()[0])
+    updated = f"{v[:4]}-{v[4:6]}-{v[6:]}" if len(v) == 8 else "unknown date"
+    print(f"{db}\n  built from data of {updated}")
     for table in list(build.TABLES.values()) + [build.CUSTOM_TABLE]:
         n = con.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
         print(f"  {table:<14} {n:>7} parts")
@@ -124,7 +125,8 @@ def cmd_check(cfg: Config, args) -> None:
 def cmd_fab(cfg: Config, args) -> None:
     rotations = cfg.path(cfg.section("fab").get("rotations", "rotations.csv"))
     out_dir = Path(args.out) if args.out else Path(args.bom).parent
-    bom_out, cpl_out, missing = fab.run(Path(args.bom), Path(args.pnp), out_dir, rotations)
+    pnp = Path(args.pnp) if args.pnp else Path(args.bom)
+    bom_out, cpl_out, missing = fab.run(Path(args.bom), pnp, out_dir, rotations)
     print(f"Wrote {bom_out}\nWrote {cpl_out}")
     if missing:
         print(f"Not assembled (no LCSC code): {', '.join(missing)}")
@@ -192,7 +194,8 @@ def main(argv=None) -> None:
 
     p = sub.add_parser("fab", help="convert Altium BOM + Pick & Place to JLCPCB format")
     p.add_argument("bom")
-    p.add_argument("pnp")
+    p.add_argument("pnp", nargs="?", help="Pick & Place CSV (omit when the BOM also has positions, "
+                                          "as the JLCPCB Tools script writes it)")
     p.add_argument("--out", help="output folder (default: next to the BOM)")
     p.set_defaults(func=cmd_fab)
 
